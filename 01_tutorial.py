@@ -33,10 +33,10 @@ import torchvision.models.resnet as resnet
 import torchvision.transforms as transforms
 import torchvision.datasets.folder as data
 
-model = resnet.resnet18
+model = resnet.resnet18()
 
 if args.arch == 'resnet50':
-    model = resnet.resnet50
+    model = resnet.resnet50()
 
 criterion = nn.CrossEntropyLoss()
 
