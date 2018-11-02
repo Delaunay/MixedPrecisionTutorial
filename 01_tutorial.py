@@ -1,3 +1,5 @@
+# python 01_tutorial.py --arch resnet18 -j 4 -b 256 --data /Tmp/delaunap/img_net/
+
 import argparse
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
@@ -14,6 +16,9 @@ parser.add_argument('-b', '--batch-size', default=256, type=int, metavar='N',
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 
+parser.add_argument('-e', '--epochs', default=10, type=int,
+                    help='Number of epochs')
+
 learning_rate = 0.1
 momentum = 0.9
 weight_decay = 1e-4
@@ -26,7 +31,6 @@ import torch.nn as nn
 import torch.optim
 
 import torch.utils.data
-import torch.utils.data.distributed
 
 import torchvision
 import torchvision.models.resnet as resnet
@@ -65,9 +69,9 @@ loader = torch.utils.data.DataLoader(
 
 optimizer = torch.optim.SGD(
     model.parameters(),
-    args.lr,
-    momentum=args.momentum,
-    weight_decay=args.weight_decay)
+    learning_rate,
+    momentum=momentum,
+    weight_decay=weight_decay)
 
 # ---------------------------------
 import time
@@ -86,9 +90,11 @@ loading_avg = 0
 for epoch in range(0, args.epochs):
     loading_start = time.time()
 
-    for index, (x, y) in enumerate(data):
+    for index, (x, y) in enumerate(loader):
+        x = x.cuda()
+        y = y.cuda()
         loading_end = time.time()
-
+        
         # Forward
         compute_start = time.time()
         output = model(x)
@@ -114,8 +120,11 @@ for epoch in range(0, args.epochs):
         if index > 10:
             break
 
-        print('Compute: {:.4f} s  {:.4f} img/s'.format(compute_avg, args.batch_size / compute_avg))
-        print('Loading: {:.4f} s  {:.4f} img/s'.format(loading_avg, args.batch_size / loading_avg))
+    cavg = compute_avg / compute_count
+    print('Compute: {:.4f} s  {:.4f} img/s'.format(cavg, args.batch_size / cavg), end='\t')
+    
+    lavg = loading_avg / compute_count
+    print('Loading: {:.4f} s  {:.4f} img/s'.format(lavg, args.batch_size / lavg))
 
     # do only 10 `epochs`
     if epoch > 10:
