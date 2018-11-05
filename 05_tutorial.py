@@ -52,9 +52,20 @@ criterion = criterion.cuda()
 
 
 class DatasetTensorFolder(torch.utils.data.dataset.Dataset):
-    def __init__(self, folder):
+    def __init__(self, folder, worker=4):
+        from multiprocessing import Pool, Queue
+
         self.folder = folder
+        self.workers = Pool(worker)
+
+        # limit 4 batch to be loaded
+        self.queue = Queue(maxsize=4)
         self.files = list(self.folder_visitor(self.folder))
+        self.result = self.workers.apply_async(self.load_tensor, range(len(self.files)))
+
+    def load_tensor(self, index):
+        x, y = torch.load(self.files[index])
+        self.queue.put((x.float(), y.long()))
 
     @staticmethod
     def folder_visitor(folder) -> List[str]:
@@ -72,20 +83,14 @@ class DatasetTensorFolder(torch.utils.data.dataset.Dataset):
                 yield '{}/{}/{}'.format(folder, name, item)
 
     def __getitem__(self, index):
-        return torch.load(self.files[index])
+        return self.queue.get(block=True)
 
     def __len__(self):
         return len(self.files)
 
 
-train_dataset = DatasetTensorFolder(args.data)
-
-loader = torch.utils.data.DataLoader(
-    train_dataset,
-    batch_size=args.batch_size,
-    shuffle=None,
-    num_workers=args.workers,
-    pin_memory=True)
+train_dataset = DatasetTensorFolder(args.data, worker=args.workers)
+loader = train_dataset
 
 
 optimizer = torch.optim.SGD(
