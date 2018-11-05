@@ -85,6 +85,7 @@ loading_start = 0
 loading_end = 0
 loading_avg = 0
 
+# Change
 torch.backends.cudnn.benchmark = True
 
 for epoch in range(0, args.epochs):

@@ -27,12 +27,9 @@ args = parser.parse_args()
 # ----------------------------
 import torch
 import torch.nn as nn
-
 import torch.optim
-
 import torch.utils.data
 
-import torchvision
 import torchvision.models.resnet as resnet
 import torchvision.transforms as transforms
 import torchvision.datasets.folder as data
