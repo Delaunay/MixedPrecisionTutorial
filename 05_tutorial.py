@@ -61,11 +61,13 @@ class DatasetTensorFolder(torch.utils.data.dataset.Dataset):
         # limit 4 batch to be loaded
         self.queue = Queue(maxsize=4)
         self.files = list(self.folder_visitor(self.folder))
-        self.result = self.workers.apply_async(self.load_tensor, range(len(self.files)))
+        args = [(i, self.queue) for i in range(len(self.files))]
+        self.result = self.workers.apply_async(self.load_tensor, args)
 
-    def load_tensor(self, index):
-        x, y = torch.load(self.files[index])
-        self.queue.put((x.float(), y.long()))
+    def load_tensor(self, args):
+        idx, queue = args
+        x, y = torch.load(self.files[idx])
+        queue.queue.put((x.float(), y.long()))
 
     @staticmethod
     def folder_visitor(folder) -> List[str]:
