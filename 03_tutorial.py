@@ -35,7 +35,7 @@ import torchvision.models.resnet as resnet
 import torchvision.transforms as transforms
 import torchvision.datasets.folder as data
 
-torchvision.set_image_backend('accimage')
+#torchvision.set_image_backend('accimage')
 
 model = resnet.resnet18()
 

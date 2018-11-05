@@ -1,8 +1,12 @@
+from typing import *
 import argparse
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 
 parser.add_argument('--data', type=str, metavar='DIR',
+                    help='path to the dataset location')
+
+parser.add_argument('--data-out', type=str, metavar='DIR',
                     help='path to the dataset location')
 
 parser.add_argument('--arch', type=str, default='resnet18',
@@ -35,7 +39,7 @@ import torchvision.models.resnet as resnet
 import torchvision.transforms as transforms
 import torchvision.datasets.folder as data
 
-#torchvision.set_image_backend('accimage')
+# torchvision.set_image_backend('accimage')
 
 model = resnet.resnet18()
 
@@ -51,94 +55,80 @@ model = network_to_half(model.cuda())
 
 criterion = criterion.cuda()
 
-
 train_dataset = data.ImageFolder(
     args.data + '/train/',
     transforms.Compose([
         transforms.RandomResizedCrop(224),
         transforms.RandomHorizontalFlip(),
-        #transforms.ToTensor(),
-        #transforms.Normalize(
-        #    mean=[0.485, 0.456, 0.406],
-        #    std=[0.229, 0.224, 0.225]
-        #),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225]
+        ),
     ])
 )
-
-
-class Prefetcher:
-    def __init__(self, loader):
-        self.loader = iter(loader)
-        self.mean = torch.tensor([0.485 * 255, 0.456 * 255, 0.406 * 255]).float().view(1, 3, 1, 1)
-        self.std = torch.tensor([0.229 * 255, 0.224 * 255, 0.225 * 255]).float().view(1, 3, 1, 1)
-        self.next_target = None
-        self.next_input = None
-        self.stream = torch.cuda.Stream()
-        self.preload()
-
-    def preload(self):
-        self.next_input, self.next_target = next(self.loader)
-
-        with torch.cuda.stream(self.stream):
-            #  Send to device
-            self.next_input = self.next_input.cuda(async=True)
-            self.next_target = self.next_target.cuda(async=True)
-
-            # Normalize on the GPU
-            self.next_input = self.next_input.sub_(self.mean).div_(self.std)
-
-            # Convert to half
-            self.next_input = self.next_input.half()
-
-    def __next__(self):
-        # Wait for next_input to be read
-        torch.cuda.current_stream().wait_stream(self.stream)
-
-        input = self.next_input
-        target = self.next_target
-
-        self.preload()
-        return input, target
-
-    next = __next__
-
-
-def fast_collate(batch):
-    """
-        from Apex by NVIDIA
-    """
-    import numpy as np
-
-    imgs = [img[0] for img in batch]
-
-    targets = torch.tensor([target[1] for target in batch], dtype=torch.int64)
-
-    w = imgs[0].size[0]
-    h = imgs[0].size[1]
-
-    tensor = torch.zeros((len(imgs), 3, h, w), dtype=torch.uint8)
-
-    for i, img in enumerate(imgs):
-
-        nump_array = np.asarray(img, dtype=np.uint8)
-        tens = torch.from_numpy(nump_array)
-
-        if nump_array.ndim < 3:
-            nump_array = np.expand_dims(nump_array, axis=-1)
-
-        nump_array = np.rollaxis(nump_array, 2)
-        tensor[i] += torch.from_numpy(nump_array)
-
-    return tensor, targets
-
 
 loader = torch.utils.data.DataLoader(
     train_dataset,
     batch_size=args.batch_size,
     shuffle=None,
     num_workers=args.workers,
-    pin_memory=True,
-    collate_fn=fast_collate)
+    pin_memory=True)
+
+
+def preprocess(loader):
+    for epoch in range(0, args.epochs):
+
+        for index, (x, y) in enumerate(loader):
+            x = x.half()
+            y = y.half()
+
+            torch.save((x, y), args.data_out + '/img_' + str(index) + '.pt')
+
+        if epoch > 10:
+            break
+
+
+print('Preprocessing ...')
+preprocess(loader)
+
+
+class DatasetTensorFolder(torch.utils.data.dataset.Dataset):
+    def __init__(self, folder):
+        self.folder = folder
+        self.files = list(self.folder_visitor(self.folder))
+
+    @staticmethod
+    def folder_visitor(folder) -> List[str]:
+        import fnmatch
+        import os
+
+        classes = set()
+
+        for root, _, files in os.walk(folder):
+            name = root.split('/')[-1]
+            if root != folder:
+                classes.add(name)
+
+            for item in fnmatch.filter(files, "*"):
+                yield '{}/{}/{}'.format(folder, name, item)
+
+    def __getitem__(self, index):
+        return torch.load(self.files[index])
+
+    def __len__(self):
+        return len(self.files)
+
+
+train_dataset = DatasetTensorFolder(args.data_out)
+
+loader = torch.utils.data.DataLoader(
+    train_dataset,
+    batch_size=args.batch_size,
+    shuffle=None,
+    num_workers=args.workers,
+    pin_memory=True)
+
 
 optimizer = torch.optim.SGD(
     model.parameters(),
@@ -171,9 +161,8 @@ torch.backends.cudnn.benchmark = True
 
 for epoch in range(0, args.epochs):
     loading_start = time.time()
-    fetcher = Prefetcher(loader)
 
-    for index, (x, y) in enumerate(fetcher):
+    for index, (x, y) in enumerate(loader):
         x = x.cuda()
         y = y.cuda()
         loading_end = time.time()
