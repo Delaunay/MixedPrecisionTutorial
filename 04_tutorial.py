@@ -69,8 +69,8 @@ train_dataset = data.ImageFolder(
 class Prefetcher:
     def __init__(self, loader):
         self.loader = iter(loader)
-        self.mean = torch.tensor([0.485 * 255, 0.456 * 255, 0.406 * 255]).float().view(1, 3, 1, 1)
-        self.std = torch.tensor([0.229 * 255, 0.224 * 255, 0.225 * 255]).float().view(1, 3, 1, 1)
+        self.mean = torch.tensor([0.485 * 255, 0.456 * 255, 0.406 * 255]).float().view(1, 3, 1, 1).half()
+        self.std = torch.tensor([0.229 * 255, 0.224 * 255, 0.225 * 255]).float().view(1, 3, 1, 1).half()
         self.next_target = None
         self.next_input = None
         self.stream = torch.cuda.Stream()

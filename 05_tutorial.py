@@ -6,9 +6,6 @@ parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('--data', type=str, metavar='DIR',
                     help='path to the dataset location')
 
-parser.add_argument('--data-out', type=str, metavar='DIR',
-                    help='path to the dataset location')
-
 parser.add_argument('--arch', type=str, default='resnet18',
                     help='Conv Net Architecture')
 
@@ -36,8 +33,6 @@ import torch.utils.data
 
 import torchvision
 import torchvision.models.resnet as resnet
-import torchvision.transforms as transforms
-import torchvision.datasets.folder as data
 
 # torchvision.set_image_backend('accimage')
 
@@ -54,43 +49,6 @@ from apex.fp16_utils import network_to_half
 model = network_to_half(model.cuda())
 
 criterion = criterion.cuda()
-
-train_dataset = data.ImageFolder(
-    args.data + '/train/',
-    transforms.Compose([
-        transforms.RandomResizedCrop(224),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225]
-        ),
-    ])
-)
-
-loader = torch.utils.data.DataLoader(
-    train_dataset,
-    batch_size=args.batch_size,
-    shuffle=None,
-    num_workers=args.workers,
-    pin_memory=True)
-
-
-def preprocess(loader):
-    for epoch in range(0, args.epochs):
-
-        for index, (x, y) in enumerate(loader):
-            x = x.half()
-            y = y.half()
-
-            torch.save((x, y), args.data_out + '/img_' + str(index) + '.pt')
-
-        if epoch > 10:
-            break
-
-
-print('Preprocessing ...')
-preprocess(loader)
 
 
 class DatasetTensorFolder(torch.utils.data.dataset.Dataset):
@@ -120,7 +78,7 @@ class DatasetTensorFolder(torch.utils.data.dataset.Dataset):
         return len(self.files)
 
 
-train_dataset = DatasetTensorFolder(args.data_out)
+train_dataset = DatasetTensorFolder(args.data)
 
 loader = torch.utils.data.DataLoader(
     train_dataset,
