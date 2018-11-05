@@ -34,22 +34,6 @@ import torch.utils.data
 import torchvision
 import torchvision.models.resnet as resnet
 
-# torchvision.set_image_backend('accimage')
-
-model = resnet.resnet18()
-
-if args.arch == 'resnet50':
-    model = resnet.resnet50()
-
-criterion = nn.CrossEntropyLoss()
-
-# CHANGE 1
-from apex.fp16_utils import network_to_half
-
-model = network_to_half(model.cuda())
-
-criterion = criterion.cuda()
-
 
 def load_tensor(idx, queue):
     x, y = torch.load(idx)
@@ -96,23 +80,6 @@ class DatasetTensorFolder(torch.utils.data.dataset.Dataset):
 train_dataset = DatasetTensorFolder(args.data, worker=args.workers)
 loader = train_dataset
 
-
-optimizer = torch.optim.SGD(
-    model.parameters(),
-    learning_rate,
-    momentum=momentum,
-    weight_decay=weight_decay)
-
-# CHANGE 2
-import apex.fp16_utils.fp16_optimizer as apex_optimizer
-
-optimizer = apex_optimizer.FP16_Optimizer(optimizer, static_loss_scale=256)
-
-# ---------------------------------
-import time
-
-model.train()
-
 compute_start = 0
 compute_end = 0
 compute_avg = 0
@@ -127,47 +94,14 @@ count = 0
 torch.backends.cudnn.benchmark = True
 
 for epoch in range(0, args.epochs):
-    loading_start = time.time()
 
     for index, (x, y) in enumerate(loader):
         x = x.cuda()
         y = y.cuda()
-        loading_end = time.time()
 
-        # Forward
-        compute_start = time.time()
-        output = model(x)
-        loss = criterion(output, y.long())
-        floss = loss.item()
-
-        # CHANGE 3
-        # Backward
-        optimizer.zero_grad()
-        optimizer.backward(loss)
-
-        # Update
-        optimizer.step()
-        compute_end = time.time()
-
-        # Update Stats
-        if count > skip:
-            compute_avg += compute_end - compute_start
-            compute_count += 1
-
-            loading_avg += loading_end - loading_start
-            loading_start = time.time()
-
-        count += 1
         # do only 10 batches per epochs
         if index > 10:
             break
-
-    if compute_count > 0:
-        cavg = compute_avg / compute_count
-        print('Compute: {:.4f} s  {:.4f} img/s'.format(cavg, args.batch_size / cavg), end='\t')
-
-        lavg = loading_avg / compute_count
-        print('Loading: {:.4f} s  {:.4f} img/s'.format(lavg, args.batch_size / lavg))
 
     # do only 10 `epochs`
     if epoch > 10:
