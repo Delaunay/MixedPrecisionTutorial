@@ -61,16 +61,15 @@ class DatasetTensorFolder(torch.utils.data.dataset.Dataset):
         from multiprocessing import Pool, Manager
 
         self.folder = folder
-        self.workers = Pool(worker)
-        self.manager = Manager()
+        #self.workers = Pool(worker)
+        #self.manager = Manager()
 
         # limit 4 batch to be loaded
-        self.queue = self.manager.Queue(maxsize=4)
-
+        #self.queue = self.manager.Queue(maxsize=4)
         self.files = list(self.folder_visitor(self.folder))
-
-        self.result = [self.workers.apply_async(load_tensor, args=(name, self.queue)) for name in self.files]
-
+        #self.result = [self.workers.apply_async(load_tensor, args=(name, self.queue)) for name in self.files]
+        #print(self.result[0].get())
+    
     @staticmethod
     def folder_visitor(folder) -> List[str]:
         import fnmatch
@@ -87,7 +86,10 @@ class DatasetTensorFolder(torch.utils.data.dataset.Dataset):
                 yield '{}/{}/{}'.format(folder, name, item)
 
     def __getitem__(self, index):
-        return self.queue.get(block=True)
+        #print('getting')
+        #return self.queue.get(block=True)
+        x, y = torch.load(self.files[index])
+        return x.float(), y.long()        
 
     def __len__(self):
         return len(self.files)

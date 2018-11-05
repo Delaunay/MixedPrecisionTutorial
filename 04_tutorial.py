@@ -69,8 +69,8 @@ train_dataset = data.ImageFolder(
 class Prefetcher:
     def __init__(self, loader):
         self.loader = iter(loader)
-        self.mean = torch.tensor([0.485 * 255, 0.456 * 255, 0.406 * 255]).float().view(1, 3, 1, 1).half()
-        self.std = torch.tensor([0.229 * 255, 0.224 * 255, 0.225 * 255]).float().view(1, 3, 1, 1).half()
+        self.mean = torch.tensor([0.485 * 255, 0.456 * 255, 0.406 * 255]).float().view(1, 3, 1, 1).cuda().half()
+        self.std = torch.tensor([0.229 * 255, 0.224 * 255, 0.225 * 255]).float().view(1, 3, 1, 1).cuda().half()
         self.next_target = None
         self.next_input = None
         self.stream = torch.cuda.Stream()
@@ -81,14 +81,14 @@ class Prefetcher:
 
         with torch.cuda.stream(self.stream):
             #  Send to device
-            self.next_input = self.next_input.cuda(async=True)
+            self.next_input = self.next_input.cuda(async=True).half()
             self.next_target = self.next_target.cuda(async=True)
 
             # Normalize on the GPU
             self.next_input = self.next_input.sub_(self.mean).div_(self.std)
-
-            # Convert to half
-            self.next_input = self.next_input.half()
+   
+    def __iter__(self):
+        return self
 
     def __next__(self):
         # Wait for next_input to be read
