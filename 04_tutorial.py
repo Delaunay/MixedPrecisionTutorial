@@ -35,7 +35,7 @@ import torchvision.models.resnet as resnet
 import torchvision.transforms as transforms
 import torchvision.datasets.folder as data
 
-torchvision.set_image_backend('accimage')
+#torchvision.set_image_backend('accimage')
 
 model = resnet.resnet18()
 
@@ -50,6 +50,7 @@ from apex.fp16_utils import network_to_half
 model = network_to_half(model.cuda())
 
 criterion = criterion.cuda()
+
 
 train_dataset = data.ImageFolder(
     args.data + '/train/',
@@ -66,8 +67,6 @@ train_dataset = data.ImageFolder(
 
 
 class Prefetcher:
-    next = __next__
-
     def __init__(self, loader):
         self.loader = iter(loader)
         self.mean = torch.tensor([0.485 * 255, 0.456 * 255, 0.406 * 255]).float().view(1, 3, 1, 1)
@@ -101,13 +100,45 @@ class Prefetcher:
         self.preload()
         return input, target
 
+    next = __next__
+
+
+def fast_collate(batch):
+    """
+        from Apex by NVIDIA
+    """
+    import numpy as np
+
+    imgs = [img[0] for img in batch]
+
+    targets = torch.tensor([target[1] for target in batch], dtype=torch.int64)
+
+    w = imgs[0].size[0]
+    h = imgs[0].size[1]
+
+    tensor = torch.zeros((len(imgs), 3, h, w), dtype=torch.uint8)
+
+    for i, img in enumerate(imgs):
+
+        nump_array = np.asarray(img, dtype=np.uint8)
+        tens = torch.from_numpy(nump_array)
+
+        if nump_array.ndim < 3:
+            nump_array = np.expand_dims(nump_array, axis=-1)
+
+        nump_array = np.rollaxis(nump_array, 2)
+        tensor[i] += torch.from_numpy(nump_array)
+
+    return tensor, targets
+
 
 loader = torch.utils.data.DataLoader(
     train_dataset,
     batch_size=args.batch_size,
     shuffle=None,
     num_workers=args.workers,
-    pin_memory=True)
+    pin_memory=True,
+    collate_fn=fast_collate)
 
 optimizer = torch.optim.SGD(
     model.parameters(),
