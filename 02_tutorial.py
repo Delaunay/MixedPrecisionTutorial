@@ -130,7 +130,7 @@ if __name__ == '__main__':
         print('Loading: {:.4f} s  {:.4f} img/s'.format(lavg, args.batch_size / lavg))
 
         # do only 10 `epochs`
-        if epoch > 10:
+        if epoch > 3:
             break
 
 
