@@ -139,7 +139,10 @@ if __name__ == '__main__':
             print('Compute: {:.4f} s  {:.4f} img/s'.format(cavg, args.batch_size / cavg), end='\t')
 
             lavg = loading_avg / compute_count
-            print('Loading: {:.4f} s  {:.4f} img/s'.format(lavg, args.batch_size / lavg))
+            print('Loading: {:.4f} s'.format(lavg), end='\t')
+
+            total = cavg + lavg
+            print('Total: {:.4f} s {:.4f} img/s'.format(total, args.batch_size / total))
 
         # do only 10 `epochs`
         if epoch > 3:
