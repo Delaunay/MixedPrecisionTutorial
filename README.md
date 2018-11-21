@@ -6,6 +6,5 @@ Mixed Precision Tutorial
 * `03_tutorial.py`: enable f16 training
 * `04_tutorial.py`: use a prefetcher to increase data loading speed
 * `05_tutorial.py`: use preprocessor
-* `06_tutorial.py`: use DALI
 * `07_tutorial.py`: use Benzina
 

@@ -80,7 +80,7 @@ if __name__ == '__main__':
 
     # CHANGE 2
     import apex.fp16_utils.fp16_optimizer as apex_optimizer
-    optimizer = apex_optimizer.FP16_Optimizer(optimizer, static_loss_scale=256)
+    optimizer = apex_optimizer.FP16_Optimizer(optimizer, static_loss_scale=256, verbose=False)
 
     # ---------------------------------
     import time
