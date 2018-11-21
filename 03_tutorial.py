@@ -136,10 +136,10 @@ if __name__ == '__main__':
 
         if compute_count > 0:
             cavg = compute_avg / compute_count
-            print('Compute: {:.4f} s  {:.4f} img/s'.format(cavg, args.batch_size / cavg), end='\t')
+            #print('Compute: {:.4f} s  {:.4f} img/s'.format(cavg, args.batch_size / cavg), end='\t')
 
             lavg = loading_avg / compute_count
-            print('Loading: {:.4f} s'.format(lavg), end='\t')
+            #print('Loading: {:.4f} s'.format(lavg), end='\t')
 
             total = cavg + lavg
             print('Total: {:.4f} s {:.4f} img/s'.format(total, args.batch_size / total))
