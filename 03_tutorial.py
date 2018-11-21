@@ -96,7 +96,7 @@ if __name__ == '__main__':
     loading_end = 0
     loading_avg = 0
 
-    skip = 20
+    skip = 5
     count = 0
     torch.backends.cudnn.benchmark = True
 
@@ -112,7 +112,6 @@ if __name__ == '__main__':
             compute_start = time.time()
             output = model(x)
             loss = criterion(output, y.long())
-            floss = loss.item()
 
             # CHANGE 3
             # Backward

@@ -88,6 +88,8 @@ if __name__ == '__main__':
     loading_avg = 0
 
     # Change
+    skip = 5
+    count = 0
     torch.backends.cudnn.benchmark = True
 
     for epoch in range(0, args.epochs):
@@ -102,7 +104,6 @@ if __name__ == '__main__':
             compute_start = time.time()
             output = model(x)
             loss = criterion(output, y.long())
-            floss = loss.item()
 
             # Backward
             optimizer.zero_grad()
@@ -113,21 +114,23 @@ if __name__ == '__main__':
             compute_end = time.time()
 
             # Update Stats
-            compute_avg += compute_end - compute_start
-            compute_count += 1
+            if count > skip:
+                compute_avg += compute_end - compute_start
+                loading_avg += loading_end - loading_start
+                compute_count += 1
 
-            loading_avg += loading_end - loading_start
             loading_start = time.time()
-
+            count += 1
             # do only 10 batches per epochs
             if index > 10:
                 break
 
-        cavg = compute_avg / compute_count
-        print('Compute: {:.4f} s  {:.4f} img/s'.format(cavg, args.batch_size / cavg), end='\t')
+        if compute_count > 0:
+            cavg = compute_avg / compute_count
+            print('Compute: {:.4f} s  {:.4f} img/s'.format(cavg, args.batch_size / cavg), end='\t')
 
-        lavg = loading_avg / compute_count
-        print('Loading: {:.4f} s  {:.4f} img/s'.format(lavg, args.batch_size / lavg))
+            lavg = loading_avg / compute_count
+            print('Loading: {:.4f} s  {:.4f} img/s'.format(lavg, args.batch_size / lavg))
 
         # do only 10 `epochs`
         if epoch > 3:
